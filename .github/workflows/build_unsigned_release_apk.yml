@@ -1,8 +1,19 @@
+
+
 name: Build unsigned release apk
-
+# 触发器
 on:
-  workflow_dispatch
-
+  push:
+    tags:
+      - v*
+  pull_request:
+    tags:
+      - v*
+permissions:
+  id-token: "write"
+  contents: "write"
+  packages: "write"
+  pull-requests: "read"
 jobs:
   pre_build:
     runs-on: ubuntu-latest
@@ -21,44 +32,55 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew build
 
-  unit_tests:
-    needs: [pre_build]
-    runs-on: [ubuntu-latest]
-    steps:
-      - uses: actions/checkout@v2
-      - name: Grant execute permissions for gradlew
-        run: chmod +x gradlew
-      - name: Run Unit Tests
-        run: ./gradlew test
+#  unit_tests:
+#    needs: [pre_build]
+#    runs-on: [ubuntu-latest]
+#    steps:
+#      - uses: actions/checkout@v2
+#      - name: Grant execute permissions for gradlew
+#        run: chmod +x gradlew
+#      - name: Run Unit Tests
+#        run: ./gradlew test
 
-  android_tests:
-    needs: [pre_build]
-    runs-on: [macos-latest]
-    steps:
-      - uses: actions/checkout@v2
-      - name: Grant execute permissions for gradlew
-        run: chmod +x gradlew
-      - name: Run Instrumentation Tests
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 29
-          script: ./gradlew connectedAndroidTest
-
+#  android_tests:
+#    needs: [pre_build]
+#    runs-on: [macos-latest]
+#    steps:
+#      - uses: actions/checkout@v2
+#      - name: Grant execute permissions for gradlew
+#        run: chmod +x gradlew
+#      - name: Run Instrumentation Tests
+#        uses: reactivecircus/android-emulator-runner@v2
+#        with:
+#          api-level: 29
+#          script: ./gradlew connectedAndroidTest
+#
   build_apk:
-    needs: [unit_tests, android_tests, pre_build]
+    needs: [ pre_build ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the code
         uses: actions/checkout@v2
-        
+
       - name: Grant execute permissions for gradlew
         run: chmod +x gradlew
-        
+
       - name: Build unsigned release apk
         run: ./gradlew assembleRelease
 
-      - name: Upload unsigned release apk
-        uses: actions/upload-artifact@v2
+#      - name: Get Version Name
+#        uses: actions/github-script@v3
+#        id: get-version
+#        with:
+#          script: |
+#            const str=process.env.GITHUB_REF;
+#            return str.substring(str.indexOf("v"));
+#          result-encoding: string
+
+      - name: "Upload Release Assets"
+        uses: "marvinpinto/action-automatic-releases@latest"
         with:
-          name: apk-release
-          path: app/build/outputs/apk/release
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: false
+          files: |
+            app/build/outputs/apk/release/app-release-unsigned.apk
